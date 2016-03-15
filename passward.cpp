@@ -5,56 +5,78 @@
 	> Created Time: 2016年03月15日 星期二 10时14分31秒
  ************************************************************************/
 
+#ifndef __PASSWARD_MANAGER
+#define __PASSWARD_MANAGER
 #include<iostream>
+#include<fstream>
 #include<map>
 #include<string>
-#include<fstream>
-#include<cassert>
+
 namespace lty{
-	bool input();
-	void output();
-	using namespace std;
+using namespace std;
 	class handler{
 	public:
-		handler():__signal(input()){
+		typedef map<string,pair<string,string>> mymap;
+		handler(){
+			fs.open("/home/ty-l/lty/passward",ios_base::in);
+			if(fs.is_open()){
+				string signal;
+				fs>>signal;
+				if(signal=="passward"){
+					fs.get();			//get white space
+					getline(fs,__Passward,'\n');
+				}else{
+					cerr<<"No passward while have message!!"<<endl;
+					fs.close();
+					fs.open("/media/ty-l/lty/passward",ios_base::out);		//删除信息（保证安全）
+					fs.close();
+					return;
+				}
+				string name,account,passward;
+				while(fs>>name>>account>>passward){
+					store(name,account,passward);
+				}
+				fs.close();
+			}else
+				noPassward();
 		}
 		~handler(){
-			output();
+			fs.open("/home/ty-l/lty/passward",ios_base::out);
+			fs<<"passward "<<__Passward<<endl;
+			for(mymap::iterator it=__storer.begin();it!=__storer.end();it++){
+				fs<<it->first<<' '<<it->second.first<<' '<<it->second.second<<endl;
+			}
 		}
-		bool signal(){	return __signal;	}
+		const string& passward(){	return __Passward;	}
+		void noPassward(){
+			cout<<"No account yet, maybe you login first time or maybe you clear your message."<<endl;
+			cout<<"create a passward: ";
+			getline(cin,__Passward,'\n');
+			cout<<"Okay, it's done!"<<endl;
+		}
+		bool store(string key,string account,string passward){
+			return __storer.insert(make_pair(key,make_pair(account,passward))).second;
+		}
+		pair<string,string> find(string key){
+			return __storer.find(key)->second;
+		}
+		void change(string key,string account,string passward){
+			__storer.erase(__storer.find(key));
+			store(key,account,passward);
+		}
 	private:
-		bool __signal;
+		fstream fs;				//对应文件
+		string __Passward;		//登录密码
+		mymap __storer;			//存储帐号和密码
 	};
-	typedef map<string,pair<string,string>> mymap;
-	mymap storer;			//存储帐号和密码
-	string Passward;		//登录密码
-	inline bool store(string key,string account,string passward){
-		return storer.insert(make_pair(key,make_pair(account,passward))).second;
-	}
-	inline pair<string,string> find(string key){
-		return storer.find(key)->second;
-	}
-	inline void change(string key,string account,string passward){
-		storer.erase(storer.find(key));
-		store(key,account,passward);
-	}
-	void noPassward(){
-		cout<<"No account yet, maybe you login first time or maybe you clear your message."<<endl;
-		cout<<"create a passward: ";
-		getline(cin,Passward,'\n');
-		cout<<"Okay, it's done!"<<endl;
-	}
 	void userface(){
 		cout<<"Welcome "<<endl;
 		handler h;
-		if(!h.signal()){
-			noPassward();
-		}
 		cout<<"Passward: ";
 		while(true){
 			string passward;
 			getline(cin,passward,'\n');
-			if(passward==Passward)
+			if(passward==h.passward())
 				break;
 			cout<<"error, try again: ";
 		}
@@ -66,22 +88,22 @@ namespace lty{
 			if(c=='s' or c=='c'){
 				string name,account,passward;
 				cout<<"input name please: ";
-				std::getline(cin,name,'\n');				//cin will not throw space away, just ignore it
+				getline(cin,name,'\n');				//cin will not throw space away, just ignore it
 				cout<<"input account please: ";
-				std::getline(cin,account,'\n');
+				getline(cin,account,'\n');
 				cout<<"input passward please: ";
-				std::getline(cin,passward,'\n');
-				if(c=='s' and store(name,account,passward))
+				getline(cin,passward,'\n');
+				if(c=='s' and h.store(name,account,passward))
 					cout<<"Success."<<endl;
 				else if(c=='s')
 					cout<<"Already have this name!"<<endl;
 				else
-					change(name,account,passward);
+					h.change(name,account,passward);
 			}else if(c=='f'){
 				string name;
 				cout<<"input name please: ";
 				cin>>name;
-				pair<string,string> temp=find(name);
+				pair<string,string> temp=h.find(name);
 				if(temp.first=="" and temp.second==""){
 					cerr<<"Cannot find this name."<<endl;
 				}else{
@@ -95,40 +117,5 @@ namespace lty{
 			}
 		}
 	}
-	bool input(){
-		ifstream ifs;
-		ifs.open("/home/ty-l/lty/passward",std::ios_base::in);
-		if(ifs.is_open()){
-			do{
-				string signal;
-				ifs>>signal;
-				if(signal=="passward"){
-					ifs.get();			//get white space
-					getline(ifs,Passward,'\n');
-				}else{
-					cerr<<"No passward while have message!!"<<endl;
-					exit(1);
-				}
-			}while(false);
-			string name,account,passward;
-			while(ifs>>name>>account>>passward){
-				store(name,account,passward);
-			}
-			ifs.close();
-			return true;
-		}
-		return false;
-	}
-	void output(){
-		ofstream ofs("/home/ty-l/lty/passward");
-		if(!ofs.is_open()){
-			cerr<<"output error!!"<<endl;
-			exit(1);
-		}
-		ofs<<"passward "<<Passward<<endl;
-		for(mymap::iterator it=storer.begin();it!=storer.end();it++){
-			ofs<<it->first<<' '<<it->second.first<<' '<<it->second.second<<endl;
-		}
-		ofs.close();
-	}
 };
+#endif
