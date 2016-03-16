@@ -11,13 +11,14 @@
 #include<fstream>
 #include<map>
 #include<string>
+#include<algorithm>
 
 namespace lty{
 using namespace std;
 	class handler{
 	public:
 		typedef map<string,pair<string,string>> mymap;
-		handler(){
+		handler():__secretKey("4294967295"){
 			fs.open("/home/ty-l/lty/passward",ios_base::in);
 			if(fs.is_open()){
 				string signal;
@@ -27,13 +28,20 @@ using namespace std;
 					getline(fs,__Passward,'\n');
 				}else{
 					cerr<<"No passward while have message!!"<<endl;
+					cerr<<"automatically clear all message!!"<<endl;
 					fs.close();
 					fs.open("/media/ty-l/lty/passward",ios_base::out);		//删除信息（保证安全）
 					fs.close();
+					noPassward();
 					return;
 				}
 				string name,account,passward;
 				while(fs>>name>>account>>passward){
+					int index=0;
+					for_each(passward.begin(),passward.end(),[&](char& ch){
+							ch-=__secretKey[index++];
+							index%=__secretKey.size();
+							});
 					store(name,account,passward);
 				}
 				fs.close();
@@ -42,6 +50,8 @@ using namespace std;
 		}
 		~handler(){
 			fs.open("/home/ty-l/lty/passward",ios_base::out);
+			if(__Passward=="")
+				return;
 			fs<<"passward "<<__Passward<<endl;
 			for(mymap::iterator it=__storer.begin();it!=__storer.end();it++){
 				fs<<it->first<<' '<<it->second.first<<' '<<it->second.second<<endl;
@@ -55,19 +65,39 @@ using namespace std;
 			cout<<"Okay, it's done!"<<endl;
 		}
 		bool store(string key,string account,string passward){
+			int index=0;
+			for_each(passward.begin(),passward.end(),[&](char& ch){
+					ch+=__secretKey[index++];
+					index%=__secretKey.size();
+					});
 			return __storer.insert(make_pair(key,make_pair(account,passward))).second;
 		}
+		class notFound{	};
 		pair<string,string> find(string key){
-			return __storer.find(key)->second;
+			int index=0;
+			pair<string,string> temp=__storer.find(key)->second;
+			if(temp.first=="" and temp.second=="")
+				throw notFound();
+			for_each(temp.second.begin(),temp.second.end(),[&](char& ch){
+					ch-=__secretKey[index++];
+					index%=__secretKey.size();
+					});
+			return temp;
 		}
 		void change(string key,string account,string passward){
+			int index=0;
+			for_each(passward.begin(),passward.end(),[&](char& ch){
+					ch+=__secretKey[index++];
+					index%=__secretKey.size();
+					});
 			__storer.erase(__storer.find(key));
 			store(key,account,passward);
 		}
 	private:
-		fstream fs;				//对应文件
-		string __Passward;		//登录密码
-		mymap __storer;			//存储帐号和密码
+		fstream fs;									//对应文件
+		string __Passward;							//登录密码
+		mymap __storer;								//存储帐号和密码
+		const string __secretKey;					//加密密匙
 	};
 	void userface(){
 		cout<<"Welcome "<<endl;
@@ -103,12 +133,12 @@ using namespace std;
 				string name;
 				cout<<"input name please: ";
 				cin>>name;
-				pair<string,string> temp=h.find(name);
-				if(temp.first=="" and temp.second==""){
-					cerr<<"Cannot find this name."<<endl;
-				}else{
-					cout<<"account:  "<<temp.first<<endl;
+				try{
+					pair<string,string> temp=h.find(name);
+					cout<<"account: "<<temp.first<<endl;
 					cout<<"passward: "<<temp.second<<endl;
+				}catch(handler::notFound&){
+					cerr<<"Cannot find this name."<<endl;
 				}
 			}else if(c=='q'){
 				return;
