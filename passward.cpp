@@ -38,7 +38,7 @@ using namespace std;
 				string name,account,passward;
 				while(fs>>name>>account>>passward){
 					int index=0;
-					for_each(passward.begin(),passward.end(),[&](char& ch){
+					for_each(passward.begin(),passward.end(),[this,&index](char& ch){
 							ch-=__secretKey[index++];
 							index%=__secretKey.size();
 							});
@@ -66,7 +66,7 @@ using namespace std;
 		}
 		bool store(string key,string account,string passward){
 			int index=0;
-			for_each(passward.begin(),passward.end(),[&](char& ch){
+			for_each(passward.begin(),passward.end(),[&index,this](char& ch){
 					ch+=__secretKey[index++];
 					index%=__secretKey.size();
 					});
@@ -78,7 +78,7 @@ using namespace std;
 			pair<string,string> temp=__storer.find(key)->second;
 			if(temp.first=="" and temp.second=="")
 				throw notFound();
-			for_each(temp.second.begin(),temp.second.end(),[&](char& ch){
+			for_each(temp.second.begin(),temp.second.end(),[&index,this](char& ch){
 					ch-=__secretKey[index++];
 					index%=__secretKey.size();
 					});
